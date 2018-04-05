@@ -1,6 +1,7 @@
 from slackclient import SlackClient
 import json
 import os
+import logging
 
 ICON = ":guitar:"
 
@@ -16,13 +17,12 @@ class Bot(object):
     def _channel(self):
         return os.environ.get('CHANNEL', 'musicreactions')
 
-    def _username(self):
-        return os.environ.get('USERNAME', 'Discobear')
-
-    def say(self, message):
+    def say(self, username, message):
+        logging.debug("Saying as {}: {}".format(username, message))
         self._client.rtm_send_message(self._channel, message)
 
-    def sayEx(self, text, image, footer):
+    def sayEx(self, username, text, image, footer):
+        logging.debug("Extra saying as {}: {}, {}, {}".format(username, text, image, footer))
         d = {'thumb_url': image, 'text': text, "footer": footer, "fallback": text}
-        self._client.api_call("chat.postMessage", channel=self._channel(), username=self._username(), as_user="false", icon_emoji=self._icon, attachments=json.dumps([d]))
+        self._client.api_call("chat.postMessage", channel=self._channel(), username=username, as_user="false", icon_emoji=self._icon, attachments=json.dumps([d]))
 

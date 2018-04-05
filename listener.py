@@ -5,6 +5,7 @@ from multiprocessing import Lock
 import logging
 
 import pychromecast
+import os
 import bot
 
 POLL_INTERVAL = 1800
@@ -15,6 +16,17 @@ class ChromecastListener(object):
         self._player = player
         self._bot = bot
         self._lock = Lock()
+        
+    def get_source(self, status):
+        if "soundcloud" in status.content_id:
+            return "SoundCloud"
+        if "youtube" in status.content_type:
+            return "YouTube"
+        if "spotify" in status.content_type:
+            return "Spotify"
+        else:
+            logging.debug("Unknown source: content_id=%s, content_type=%s" % (status.content_id, status.content_type))
+        return os.environ.get('USERNAME', 'Discobear')
 
     def new_media_status(self, status):
         logging.debug("[%s] Got new_media_status %s" % (self._player, status.player_state))
@@ -33,7 +45,7 @@ class ChromecastListener(object):
             self._lock.release()
 
         logging.info("Posting song %s" % (self._song, ))
-        artist = "?"
+        artist = None
         try:
             artist = status.media_metadata['artist']
         except:
@@ -45,13 +57,16 @@ class ChromecastListener(object):
         except:
             logging.exception("Failed to get image")
         try:
-            self.postSong(artist, song, image)
+            self.postSong(self.get_source(status), artist, song, image)
         except Exception as e:
             logging.exception("Failed to post song")
 
-    def postSong(self, artist, song_name, image=None):
+    def postSong(self, source, artist, song_name, image=None):
         logging.info("[%s]\t%s - %s (%s)" % (self._player, artist, song_name, image))
-        self._bot.sayEx("%s - %s" % (song_name, artist), image, self._player)
+        text = song_name
+        if not artist == None:
+            text = "{} - {}".format(song_name, artist)
+        self._bot.sayEx(source, text, image, self._player)
 
 def active_devices():
     return pychromecast.get_chromecasts()
@@ -86,6 +101,6 @@ def main():
         sleep(POLL_INTERVAL)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     main()
 
